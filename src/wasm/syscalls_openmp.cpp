@@ -1,28 +1,66 @@
 #include "WasmModule.h"
 
+#include <WAVM/Platform/Thread.h>
 #include <WAVM/Runtime/Runtime.h>
 #include <WAVM/Runtime/Intrinsics.h>
 #include <util/environment.h>
 
 #include <condition_variable>
 #include <mutex>
-#include <stdio.h>
 
 namespace wasm {
+    // Supported sched_types
     enum sched_type : I32 {
         kmp_sch_lower = 32, /**< lower bound for unordered values */
         kmp_sch_static_chunked = 33,
         kmp_sch_static = 34, /**< static unspecialized */
     };
 
-    static thread_local int thisThreadNumber = 0;
-    static unsigned int thisSectionThreadCount = 1;
+    struct PlatformArgs {
+        Runtime::ContextRuntimeData *contextRuntimeData;
+        Runtime::Function *func;
+        wasm::WasmModule *parentModule;
+        message::Message *parentCall;
+        std::vector<IR::UntaggedValue> &arguments;
+    };
+
+    struct ThreadArgs {
+        PlatformArgs *pargs;
+        int tid;
+    };
+
+    thread_local int thisThreadNumber = 0;
+    static int thisSectionThreadCount = 1;
     static int masterNumThread = -1; /* per team/parallel section */
-    static unsigned int userNumThread = util::getUsableCores(); /* per user/program */
-    static std::vector<std::thread> threads;
+    static int userNumThread = static_cast<int>(util::getUsableCores()); /* per user/program */
+    std::vector<WAVM::Platform::Thread *> platformThreads;
     static int numThreadSemaphore = -1;
     static std::mutex barrierMutex;
     static std::condition_variable barrierCV;
+
+    /**
+     * Bootstraps an OpenMP thread
+     * @param _pargs A PlatformArgs* with tid set to the thread TID and the rest set to the master's information
+     * @return thread exit code, if i64. Still unclear
+     */
+    I64 fork_thread_entry(void *_targs) {
+        ThreadArgs *targs = static_cast<ThreadArgs*>(_targs);
+        PlatformArgs *pargs = targs->pargs;
+        wasm::setExecutingModule(pargs->parentModule);
+        wasm::setExecutingCall(pargs->parentCall);
+
+        // Assign this thread its relevant thread number
+        // TODO: change thisThreadNumber in each thread
+        thisThreadNumber = targs->tid;
+
+        // Create a new context for this thread
+        auto threadContext = createContext(getCompartmentFromContextRuntimeData(pargs->contextRuntimeData));
+
+        IR::UntaggedValue result;
+        Runtime::invokeFunction(threadContext, pargs->func, Runtime::getFunctionType(pargs->func),
+                                pargs->arguments.data(), &result);
+        return result.i64; // OpenMP extracts void functions, this should always be 0
+    }
 
     /**
      * @return the thread number, within its team, of the thread executing the function.
@@ -152,10 +190,19 @@ namespace wasm {
         // Retrieve the microstask function from the table
         Runtime::Object *funcObj = Runtime::getTableElement(getExecutingModule()->defaultTable, microtaskPtr);
         Runtime::Function *func = Runtime::asFunction(funcObj);
-        IR::FunctionType funcType = Runtime::getFunctionType(func);
+        Runtime::Memory *memoryPtr = getExecutingModule()->defaultMemory;
+        WasmModule *parentModule = getExecutingModule();
+        message::Message *parentCall = getExecutingCall();
 
-        // Get reference to module memory
-        Runtime::GCPointer<Runtime::Memory> &memoryPtr = getExecutingModule()->defaultMemory;
+        // Build up the arguments for this function (one per non-global shared variable).
+        std::vector<IR::UntaggedValue> arguments = {thisThreadNumber, argc};
+        if (argc > 0) {
+            // Get pointer to start of arguments in host memory
+            U32 *pointers = Runtime::memoryArrayPtr<U32>(memoryPtr, argsPtr, argc);
+            for (int argIdx = 0; argIdx < argc; argIdx++) {
+                arguments.emplace_back(pointers[argIdx]);
+            }
+        }
 
         // Set the thread count for this section
         thisSectionThreadCount = masterNumThread > 0 ? masterNumThread : userNumThread;
@@ -166,46 +213,31 @@ namespace wasm {
         // Resets thread count for subsequent parallel regions
         masterNumThread = -1;
 
-        for (unsigned int threadNum = 0; threadNum < thisSectionThreadCount; threadNum++) {
-            WasmModule *parentModule = getExecutingModule();
-            message::Message *parentCall = getExecutingCall();
+        // Info for Thread boostrapping
+        PlatformArgs state = {
+                contextRuntimeData,
+                func,
+                parentModule,
+                parentCall,
+                arguments,
+        };
 
-            // Here we need to build up the arguments for this function (one 
-            // argument per non-global shared variable). 
-            std::vector<IR::UntaggedValue> arguments = {thisThreadNumber, argc};
-            if (argc > 0) {
-                // Get pointer to start of arguments in host memory
-                U32 *pointers = Runtime::memoryArrayPtr<U32>(memoryPtr, argsPtr, argc);
-                for (int argIdx = 0; argIdx < argc; argIdx++) {
-                    arguments.emplace_back(pointers[argIdx]);
-                }
-            }
+        std::vector<ThreadArgs> threadArgs;
+        threadArgs.reserve(thisSectionThreadCount); // Safety: threadArgs should be Send (no allocation on emplace_back)
 
-            threads.emplace_back([
-                                         threadNum,
-                                         func, funcType, arguments,
-                                         contextRuntimeData, parentModule, parentCall
-                                 ] {
-                // Note that the executing module and call are stored in TLS so need to explicitly set here
-                setExecutingModule(parentModule);
-                setExecutingCall(parentCall);
-
-                // Assign this thread its relevant thread number
-                thisThreadNumber = threadNum;
-
-                // Create a new context for this thread
-                auto threadContext = createContext(getCompartmentFromContextRuntimeData(contextRuntimeData));
-
-                IR::UntaggedValue result;
-                Runtime::invokeFunction(threadContext, func, funcType, arguments.data(), &result);
-            });
+        // Create and spawn OpenMP threads
+        for (int threadNum = 0; threadNum < thisSectionThreadCount; threadNum++) {
+            threadArgs.emplace_back(ThreadArgs{&state, static_cast<int>(threadNum)});
+            platformThreads.emplace_back(Platform::createThread(0, fork_thread_entry, &threadArgs[threadNum]));
         }
 
-        // Await all threads
-        for (auto &t: threads) {
-            if (t.joinable()) {
-                t.join();
-            }
+        I64 numErrors = 0;
+        for (Platform::Thread *thread : platformThreads) {
+            numErrors += Platform::joinThread(thread);
+        }
+
+        if (numErrors) {
+            logger->error("Some threads have exited with some errors {}", numErrors);
         }
 
         // Reset the thread count for the master thread
@@ -311,7 +343,9 @@ namespace wasm {
                 *pstride = trip_count;
                 break;
             }
-
+            default: {
+                logger->warn("Unimplemented scheduling code {}", schedule);
+            }
         }
 //        logger->debug("After TID{}- lower {}, upper {}, stride {}, lastiter {}", thisThreadNumber, *plower, *pupper,
 //                      *pstride, *plastiter);
