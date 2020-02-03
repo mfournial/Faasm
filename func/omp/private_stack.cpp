@@ -37,11 +37,9 @@ FAASM_MAIN_FUNC() {
         int m = y / (l + 1);
         int n = m * m + 6;
         if (random_stuff(num, y, &num, &l, &m, n) != 200) {
-            printf("here\n");
             fail = true;
         }
         if (num != 100 || l != 101 * omp_get_thread_num() || m != 102) {
-            printf("num %d, l %d, m %d\n", num, l, m);
             fail = true;
         }
     }
