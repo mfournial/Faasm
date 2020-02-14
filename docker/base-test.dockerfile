@@ -31,9 +31,31 @@ RUN pip3 install invoke requests
 COPY requirements.txt /tmp/requirements.txt
 RUN pip3 install -r /tmp/requirements.txt
 
+# Install pyfaasm
+RUN pip3 install pyfaasm
+
 # Download the toolchain
 WORKDIR /usr/local/code/faasm
 RUN inv download-toolchain
+RUN inv download-sysroot
+RUN inv download-runtime-root --nocodegen
+# Compile test library
+RUN inv compile-libfake
+
+# Fix ownership
+RUN chown -R root:root /usr/local/faasm
+
+RUN inv run-local-codegen
+
+# Compile test library
+RUN inv compile-libfake
+
+# Fix ownership
+RUN chown -R root:root /usr/local/faasm
+
+# Create user with dummy uid required by Python
+RUN groupadd -g 1000 faasm
+RUN useradd -u 1000 -g 1000 faasm
 
 # Build codegen binaries
 WORKDIR /faasm/build

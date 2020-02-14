@@ -27,21 +27,11 @@ RUN inv download-sysroot
 RUN inv download-runtime-root --nocodegen
 RUN inv run-local-codegen
 
-# Compile test library
-RUN inv compile-libfake
-
-# Fix ownership
-RUN chown -R root:root /usr/local/faasm
-
 # Install pyfaasm
-RUN pip3 install pyfaasm
+RUN pip3 install -U pyfaasm
 
 # Set up Python files
 RUN inv upload-all --py --local-copy
-
-# Create user with dummy uid required by Python
-RUN groupadd -g 1000 faasm
-RUN useradd -u 1000 -g 1000 faasm
 
 # Run the tests (when container is run)
 WORKDIR /usr/local/code/faasm
