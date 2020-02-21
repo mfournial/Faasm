@@ -18,8 +18,8 @@ jobs:
       - name: Cache toolchain
         uses: actions/cache@v1
         with:
-          path: ${{ jobs.build.env.CACHE_SYSTEM_TOOLCHAIN }}
-          key: ${{ runner.os }}-${{ jobs.build.env.CACHE_SYSTEM_TOOLCHAIN }}
+          path: $CACHE_SYSTEM_TOOLCHAIN
+          key: ${{ runner.os }}-$CACHE_SYSTEM_TOOLCHAIN
       - name: "Build the testing image"
         run: |
           mkdir -p $CACHE_SYSTEM_TOOLCHAIN
