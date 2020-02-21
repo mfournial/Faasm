@@ -1,0 +1,64 @@
+name: Test Cloud runner
+
+on:
+  push:
+    branches:
+      - improve-testing-ci
+
+jobs:
+  deps:
+  build:
+    runs-on:  ubuntu-18.04 #[self-hosted, linux, x86]
+    if: github.actor == "mfournial" || github.actor == "Shillacker" # in array would be nicer but doesn't exists yet
+    env:
+      DOCKER_BUILDKIT: 1
+      CACHE_SYSTEM_TOOLCHAIN: normal-toolchain-cache
+      OOT_BUILD_DIR: /faasm/build
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache toolchain
+        uses: actions/cache@v1
+        with:
+          path: ${{ jobs.build.env.CACHE_SYSTEM_TOOLCHAIN }}
+          key: ${{ runner.os }}-${{ jobs.build.env.CACHE_SYSTEM_TOOLCHAIN }}
+      - name: "Build the testing image"
+        run: |
+          mkdir -p $CACHE_SYSTEM_TOOLCHAIN
+          docker build . -v $CACHE_SYSTEM_TOOLCHAIN:$OOT_BUILD_DIR -f docker/testing.dockerfile --tag faasm/testing:${GITHUB_SHA} --build-arg FAASM_VERSION=0.0.6
+      - name: "Create a docker network"
+        run: docker network create -d bridge test-net
+      - name: "Stop redis container"
+        run: docker stop redis | true
+      - name: "Run the redis container"
+        run: docker run -d --name redis --net=test-net --rm faasm/redis:0.0.6
+      - name: "Run the testing container"
+        run: >
+          docker run --privileged --net=test-net
+          -e CGROUP_MODE=on
+          -e HOST_TYPE=ci
+          -e REDIS_STATE_HOST=redis
+          -e REDIS_QUEUE_HOST=redis
+          -e LOG_LEVEL=info
+          -e THREADS_PER_WORKER=5
+          -v $CACHE_SYSTEM_TOOLCHAIN:$OOT_BUILD_DIR
+          faasm/testing:${GITHUB_SHA}
+          /usr/local/code/faasm/bin/ci_run.sh
+#      - name: "Installs dependencies"
+#        run: |
+#          cd ansible
+#          ansible-playbook local_dev.yml
+#          ansible-playbook catch.yml
+#      - name: "Build toolchain"
+#        run: |
+#          echo "TODO - Do not rely on the .BUILT files and actively try and rebuild the root or compare versions"
+#      - name: "Compile test utilities"
+#        run: >
+#          docker run --privileged --net=test-net
+#          -e CGROUP_MODE=on
+#          -e HOST_TYPE=ci
+#          -e REDIS_STATE_HOST=redis
+#          -e REDIS_QUEUE_HOST=redis
+#          -e LOG_LEVEL=info
+#          -e THREADS_PER_WORKER=5
+#          faasm/testing:${GITHUB_SHA}
+#          /usr/local/code/faasm/bin/ci_run.sh

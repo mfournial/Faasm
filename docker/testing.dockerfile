@@ -19,6 +19,17 @@ RUN inv install-native-tools
 
 # Build the actual tests (do this early to catch failures)
 WORKDIR /faasm/build
+
+RUN cmake \
+    -GNinja \
+    -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
+    -DCMAKE_C_COMPILER=/usr/bin/clang \
+    -DCMAKE_BUILD_TYPE=Release \
+    /usr/local/code/faasm
+
+RUN cmake --build . --target libWAVM
+RUN cmake --build . --target codegen_shared_obj
+RUN cmake --build . --target codegen_func
 RUN cmake --build . --target tests
 
 # Download tools
