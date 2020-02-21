@@ -6,7 +6,6 @@ on:
       - improve-testing-ci
 
 jobs:
-  deps:
   build:
     runs-on:  ubuntu-18.04 #[self-hosted, linux, x86]
     if: github.actor == "mfournial" || github.actor == "Shillacker" # in array would be nicer but doesn't exists yet
