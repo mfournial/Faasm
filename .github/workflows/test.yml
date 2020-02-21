@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     runs-on:  ubuntu-18.04 #[self-hosted, linux, x86]
-    if: github.actor == "mfournial" || github.actor == "Shillacker" # in array would be nicer but doesn't exists yet
+    if: github.actor == 'mfournial' || github.actor == 'Shillacker' # in array would be nicer but doesn't exists yet
     env:
       DOCKER_BUILDKIT: 1
       CACHE_SYSTEM_TOOLCHAIN: normal-toolchain-cache
