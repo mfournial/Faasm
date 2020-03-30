@@ -1,10 +1,10 @@
-cmake_minimum_required(VERSION 3.8.0)
+cmake_minimum_required(VERSION 3.12.0)
 project(faasm)
 
 # Top-level CMake config
 set(CMAKE_CXX_FLAGS "-Wall -Werror")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
