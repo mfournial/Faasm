@@ -1,5 +1,7 @@
 #include "WasmModule.h"
 
+#include<ctime>
+
 #include <mutex>
 
 #include <WAVM/Platform/Thread.h>
@@ -103,6 +105,106 @@ namespace wasm {
         thisThreadNumber = threadArgs->tid;
 
         return getExecutingModule()->executeThread(threadArgs->spec);
+    }
+
+    WAVM_DEFINE_INTRINSIC_FUNCTION(env, "__kmpc_push_target_tripcount", void, __kmpc_push_target_tripcount, I64 device_id, U64 loop_tripcount) {
+        util::getLogger()->debug("S - __kmpc_push_target_tripcount {} {}", device_id, loop_tripcount);
+        std::runtime_error("Unimplemented OMP function");
+    }
+
+    /**
+     * Experimental function to run GPU code. Fork team shouldn't create threads, and not worry about levels.
+     * Arguments similar to fork_call
+     */
+    WAVM_DEFINE_INTRINSIC_FUNCTION(env, "__kmpc_fork_teams", void, __kmpc_fork_teams, I32 locPtr, I32 argc, I32 microtaskPtr, I32 argsPtr) {
+        util::getLogger()->warn("EXPERIMENTAL: S - __kmpc_fork_teams {} {} {} {}", locPtr, argc, microtaskPtr, argsPtr);
+
+        WasmModule *parentModule = getExecutingModule();
+        Runtime::Memory *memoryPtr = parentModule->defaultMemory;
+        message::Message *parentCall = getExecutingCall();
+
+        // Retrieve the microstask function from the table
+        Runtime::Function *func = Runtime::asFunction(
+                Runtime::getTableElement(getExecutingModule()->defaultTable, microtaskPtr));
+
+        int nextNumThreads = 1; // We only want one thread created
+
+        std::vector<OMPThreadArgs> threadArgs;
+        threadArgs.reserve(nextNumThreads);
+
+        std::vector<std::vector<IR::UntaggedValue>> microtaskArgs;
+        microtaskArgs.reserve(nextNumThreads);
+
+        std::vector<WAVM::Platform::Thread *> platformThreads;
+        platformThreads.reserve(nextNumThreads);
+
+        for (int threadNum = 0; threadNum < nextNumThreads; threadNum++) {
+            microtaskArgs.push_back({threadNum, argc});
+            if (argc > 0) {
+                // Get pointer to start of arguments in host memory
+                U32 *pointers = Runtime::memoryArrayPtr<U32>(memoryPtr, argsPtr, argc);
+                for (int argIdx = 0; argIdx < argc; argIdx++) {
+                    microtaskArgs[threadNum].emplace_back(pointers[argIdx]);
+                }
+            }
+            threadArgs.push_back({
+                                         .tid = threadNum, .newLevel = thisLevel,
+                                         .spec.contextRuntimeData = contextRuntimeData,
+                                         .spec.parentModule = parentModule, .spec.parentCall = parentCall,
+                                         .spec.func = func, .spec.funcArgs = microtaskArgs[threadNum].data(),
+                                         .spec.stackSize = OMP_STACK_SIZE
+                                 });
+        }
+
+        // Create the threads themselves
+        for (int threadNum = 0; threadNum < nextNumThreads; threadNum++) {
+            platformThreads.emplace_back(Platform::createThread(
+                    0,
+                    ompThreadEntryFunc,
+                    &threadArgs[threadNum]
+            ));
+        }
+
+        // Await all threads
+        I64 numErrors = 0;
+        for (auto t: platformThreads) {
+            numErrors += Platform::joinThread(t);
+        }
+
+        if (numErrors) {
+            throw std::runtime_error(fmt::format("{} OMP threads have exited with errors", numErrors));
+        }
+    }
+
+    WAVM_DEFINE_INTRINSIC_FUNCTION(env, "__tgt_target_teams", I32, __tgt_target_teams, I64 device_id, I32 host_ptr,
+            I32 arg_num, I32 args_base, I32 args, I64 arg_sizes,
+            I64 arg_types, I32 team_num, I32 thread_limit) {
+        util::getLogger()->debug("S - __tgt_target_teams {} {} {} .....", device_id, host_ptr, thread_limit);
+        std::runtime_error("Unimplemented OMP function");
+        return 0;
+    }
+
+    WAVM_DEFINE_INTRINSIC_FUNCTION(env, "__tgt_bin_desc ", void, __tgt_bin_desc, I32 desc) {
+        util::getLogger()->debug("S - __tgt_bin_desc {}", desc);
+        std::runtime_error("Unimplemented OMP function");
+    }
+
+    WAVM_DEFINE_INTRINSIC_FUNCTION(env, "__tgt_register_lib", void, __tgt_register_lib, I32 desc) {
+        util::getLogger()->debug("S - __tgt_register_lib {}", desc);
+        std::runtime_error("Unimplemented OMP function");
+    }
+
+    WAVM_DEFINE_INTRINSIC_FUNCTION(env, "__tgt_unregister_lib", void, __tgt_unregister_lib, I32 desc) {
+        util::getLogger()->debug("S - __tgt_unregister_lib {}", desc);
+        std::runtime_error("Unimplemented OMP function");
+    }
+
+    /**
+     * @return the current UNIX timestamp in seconds.
+     */
+    WAVM_DEFINE_INTRINSIC_FUNCTION(env, "omp_get_wtime", F64, omp_get_wtime) {
+        util::getLogger()->debug("S - omp_get_wtime");
+        return time(NULL);
     }
 
     /**

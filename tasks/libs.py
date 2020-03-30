@@ -20,6 +20,20 @@ PRK_DIR = join(THIRD_PARTY_DIR, "ParResKernels")
 
 
 @task
+def toolchain(ctx, clean=False):
+    """
+    Compile and install all libs crucial to the toolchain
+    """
+    libc(ctx)
+    malloc(ctx, clean=clean)
+    faasm(ctx, clean=clean)
+    fake(ctx, clean=clean)
+    eigen(ctx)
+    zlib(ctx)
+    tflite(ctx, clean=clean)
+
+
+@task
 def libc(ctx):
     """
     Compile and install libc
@@ -89,7 +103,7 @@ def native(ctx, clean=False):
 
 
 def _build_faasm_lib(dir_name, clean):
-    work_dir = join(PROJ_ROOT, dir_name)
+    work_dir = join(PROJ_ROOT, "libs", dir_name)
     build_dir = join(PROJ_ROOT, "build", dir_name)
 
     clean_dir(build_dir, clean)
@@ -115,10 +129,11 @@ def faasm(ctx, clean=False):
     """
     Compile and install all Faasm libraries
     """
-    _build_faasm_lib("lib-cpp", clean)
-    _build_faasm_lib("lib-pyinit", clean)
-    _build_faasm_lib("lib-faasmp", clean)
-    _build_faasm_lib("lib-faasmpi", clean)
+    _build_faasm_lib("cpp", clean)
+    _build_faasm_lib("pyinit", clean)
+    _build_faasm_lib("faasmp", clean)
+    _build_faasm_lib("faasmpi", clean)
+    _build_faasm_lib("rust", clean)
 
 
 @task
@@ -126,7 +141,7 @@ def faasmp(ctx, clean=False):
     """
     Compile and install the Faasm OpenMP library
     """
-    _build_faasm_lib("lib-faasmp", clean)
+    _build_faasm_lib("faasmp", clean)
 
 
 @task
@@ -134,7 +149,15 @@ def faasmpi(ctx, clean=False):
     """
     Compile and install the Faasm MPI library
     """
-    _build_faasm_lib("lib-faasmpi", clean)
+    _build_faasm_lib("faasmpi", clean)
+
+
+@task
+def rust(ctx, clean=False):
+    """
+    Install Rust library
+    """
+    _build_faasm_lib("rust", clean)
 
 
 @task
@@ -307,7 +330,7 @@ def png(ctx):
 
 
 @task
-def zlib(ctx):
+def zlib(ctx, clean=False):
     """
     Compile and install zlib
     """

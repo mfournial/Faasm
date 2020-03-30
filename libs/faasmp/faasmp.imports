@@ -1,0 +1,41 @@
+# OpenMP implementations
+__kmpc_fork_call
+__kmpc_critical
+__kmpc_end_critical
+__kmpc_master
+__kmpc_end_master
+__kmpc_global_thread_num
+__kmpc_push_num_threads
+__kmpc_barrier
+__kmpc_flush
+
+# OpenMP loops
+__kmpc_for_static_init_4
+__kmpc_for_static_fini
+
+# OpenMP reduce
+__kmpc_reduce
+__kmpc_end_reduce
+__kmpc_reduce_nowait
+__kmpc_end_reduce_nowait
+
+# OpenMP API
+omp_get_thread_num
+omp_get_num_threads
+omp_get_max_threads
+omp_set_num_threads
+omp_get_level
+omp_get_max_active_levels
+omp_set_max_active_levels
+omp_get_wtime
+
+# Debug functions
+__faasmp_debug_copy
+
+# GPU stuff
+__kmpc_push_target_tripcount
+__kmpc_fork_teams
+__tgt_target_teams
+__tgt_bin_desc
+__tgt_register_lib
+__tgt_unregister_lib

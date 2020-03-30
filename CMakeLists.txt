@@ -11,23 +11,22 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Faasm directories
 set(FAASM_SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 set(FAASM_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
-set(FAASM_LIB_C_DIR ${CMAKE_CURRENT_LIST_DIR}/lib-c)
-set(FAASM_LIB_CPP_DIR ${CMAKE_CURRENT_LIST_DIR}/lib-cpp)
-set(FAASM_PYTHON_LIB_DIR ${CMAKE_CURRENT_LIST_DIR}/lib-pyinit)
+set(FAASM_LIB_CPP_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/cpp)
+set(FAASM_PYTHON_LIB_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/pyinit)
 set(FAASM_WAVM_SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/third-party/WAVM/Lib)
 
 option(FAASM_STATIC_LIBS "Statically link Faasm libs" ON)
 option(FAASM_AWS_SUPPORT "Whether to include AWS support" OFF)
 
 # Library type (for shared libraries)
-if(FAASM_STATIC_LIBS)
+if (FAASM_STATIC_LIBS)
     function(faasm_public_lib lib_name lib_deps)
         add_library(${lib_name} STATIC ${lib_deps})
     endfunction()
     function(faasm_private_lib lib_name lib_deps)
         add_library(${lib_name} STATIC ${lib_deps})
     endfunction()
-else()
+else ()
     function(faasm_public_lib lib_name lib_deps)
         add_library(${lib_name} SHARED ${lib_deps})
     endfunction()
@@ -35,7 +34,7 @@ else()
         add_library(${lib_name} STATIC ${lib_deps})
         target_compile_options(${lib_name} PRIVATE "-fPIC")
     endfunction()
-endif()
+endif ()
 
 # Switch on WAVM stack traces in debug (potential performance gain?)
 set(WAVM_ENABLE_UNWIND ON CACHE BOOL "WAVM unwind")
@@ -54,7 +53,7 @@ add_definitions(-DFAASM_PROFILE_ON=0)
 
 # Custom LLVM build (also for profiling)
 set(FAASM_CUSTOM_LLVM 0)
-if(${FAASM_CUSTOM_LLVM})
+if (${FAASM_CUSTOM_LLVM})
     message(STATUS "Using custom LLVM")
 
     # Force using custom build of LLVM for codegen
@@ -63,11 +62,11 @@ if(${FAASM_CUSTOM_LLVM})
 
     set(WAVM_PERF_LIBS 1)
     add_definitions(-DWAVM_PERF_EVENTS=1)
-else()
+else ()
     # Use LLVM 8 explicitly for the lib parts (i.e. codegen)
     set(LLVM_DIR /usr/lib/llvm-8)
     find_package(LLVM REQUIRED CONFIG)
-endif()
+endif ()
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 
@@ -75,15 +74,15 @@ message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 # add_definitions(-DEIGEN_DONT_PARALLELIZE)
 # add_definitions(-DEIGEN_NO_MALLOC)
 
-if(FAASM_AWS_SUPPORT)
-# AWS
-find_package(aws-lambda-runtime)
+if (FAASM_AWS_SUPPORT)
+    # AWS
+    find_package(aws-lambda-runtime)
 
-# AWS SDK
-find_package(AWSSDK REQUIRED COMPONENTS lambda s3 sqs)
+    # AWS SDK
+    find_package(AWSSDK REQUIRED COMPONENTS lambda s3 sqs)
 
-add_definitions("-DAWS_SUPPORT=1")
-endif()
+    add_definitions("-DAWS_SUPPORT=1")
+endif ()
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -91,7 +90,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include_directories(
         ${FAASM_INCLUDE_DIR}
-        ${FAASM_LIB_C_DIR}
         ${FAASM_LIB_CPP_DIR}
         ${FAASM_PYTHON_LIB_DIR}
         ${CMAKE_CURRENT_BINARY_DIR}/src # Required for protobuf
@@ -101,8 +99,8 @@ if (FAASM_BUILD_TYPE STREQUAL "knative-native")
     message(STATUS "Running knative native build")
 
     add_subdirectory(func)
-    add_subdirectory(lib-cpp)
-    add_subdirectory(lib-pyinit)
+    add_subdirectory(libs/cpp)
+    add_subdirectory(libs/pyinit)
 
     add_subdirectory(src/emulator)
     add_subdirectory(src/endpoint)
@@ -117,7 +115,7 @@ elseif (FAASM_BUILD_TYPE STREQUAL "lambda-func")
     message(STATUS "Running lambda function build")
 
     add_subdirectory(func)
-    add_subdirectory(lib-cpp)
+    add_subdirectory(libs/cpp)
 
     add_subdirectory(src/aws)
     add_subdirectory(src/lambda_func)
@@ -189,8 +187,8 @@ elseif (FAASM_BUILD_TYPE STREQUAL "native-tools")
 
     set(FAASM_LIB_TYPE SHARED)
 
-    add_subdirectory(lib-cpp)
-    add_subdirectory(lib-faasmp)
+    add_subdirectory(libs/cpp)
+    add_subdirectory(libs/faasmp)
     add_subdirectory(src/emulator)
     add_subdirectory(src/proto)
     add_subdirectory(src/redis)
@@ -213,31 +211,29 @@ else ()
     add_subdirectory(func)
 
     # Faasm libraries
-    add_subdirectory(lib-cpp)
-    add_subdirectory(lib-faasmp)
-    add_subdirectory(lib-faasmpi)
-    add_subdirectory(lib-pyinit)
+    add_subdirectory(libs/cpp)
+    add_subdirectory(libs/faasmp)
+    add_subdirectory(libs/faasmpi)
+    add_subdirectory(libs/pyinit)
+    add_subdirectory(libs/rust)
 
     # Custom malloc
     add_subdirectory(third-party/malloc)
 
-    # Experiments
-    add_subdirectory(experiment)
-
     # AWS-specific
-    if(FAASM_AWS_SUPPORT)
+    if (FAASM_AWS_SUPPORT)
         add_subdirectory(src/aws)
         add_subdirectory(src/lambda_func)
         add_subdirectory(src/dispatch)
         add_subdirectory(src/lambda)
-    endif()
+    endif ()
 
     # Faasm runtime
     add_subdirectory(src/codegen)
     add_subdirectory(src/data)
-    add_subdirectory(src/edge)
     add_subdirectory(src/emulator)
     add_subdirectory(src/endpoint)
+    add_subdirectory(src/experiment)
     add_subdirectory(src/ibm)
     add_subdirectory(src/ir_cache)
     add_subdirectory(src/knative)
@@ -258,12 +254,12 @@ else ()
 
     # Tests
     add_library(catch INTERFACE)
-    add_subdirectory(test)
-    add_subdirectory(test_utils)
-    add_subdirectory(test_ibm)
-    add_subdirectory(test_knative)
+    add_subdirectory(tests/test)
+    add_subdirectory(tests/utils)
+    add_subdirectory(tests/ibm)
+    add_subdirectory(tests/knative)
 
-    if(FAASM_AWS_SUPPORT)
-    add_subdirectory(test_aws)
-    endif()
+    if (FAASM_AWS_SUPPORT)
+        add_subdirectory(tests/aws)
+    endif ()
 endif ()
