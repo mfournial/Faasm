@@ -305,6 +305,7 @@ namespace wasm {
 
             I64 numErrors = 0;
 
+
             for (int threadNum = 0; threadNum < nextNumThreads; threadNum++) {
                 scheduler::GlobalMessageBus &bus = scheduler::getGlobalMessageBus();
                 scheduler::Scheduler &scheduler = scheduler::getScheduler();
@@ -618,13 +619,13 @@ namespace wasm {
         logger->debug("S - __kmpc_reduce_nowait {} {} {} {} {} {} {}", loc, gtid, num_vars, reduce_size, reduce_data,
                      reduce_func, lck);
 
-        Runtime::Memory *memoryPtr = getExecutingModule()->defaultMemory;
-        int *localReduceData = &Runtime::memoryRef<I32>(memoryPtr, Runtime::memoryRef<I32>(memoryPtr, reduce_data));
-        logger->warn("BEFORE {}, pointing to {}", *localReduceData);
-//        return startReduction();
-
-        state::getBackend().incrByLong(REDUCE_KEY, *localReduceData);
-        return kmp::empty_reduce_block; // Just need a number different from 1 and 2
+        return startReduction();
+//        Runtime::Memory *memoryPtr = getExecutingModule()->defaultMemory;
+//        int *localReduceData = &Runtime::memoryRef<I32>(memoryPtr, Runtime::memoryRef<I32>(memoryPtr, reduce_data));
+//        logger->warn("BEFORE {}, pointing to {}", *localReduceData);
+//
+//        state::getBackend().incrByLong(REDUCE_KEY, *localReduceData);
+//        return kmp::empty_reduce_block; // Just need a number different from 1 and 2
     }
 
     /**
@@ -647,8 +648,8 @@ namespace wasm {
      */
     WAVM_DEFINE_INTRINSIC_FUNCTION(env, "__kmpc_end_reduce_nowait", void, __kmpc_end_reduce_nowait, I32 loc, I32 gtid,
                                    I32 lck) {
-        // TODO - have two variants of OMPLevel for that
-        throw std::runtime_error("Shouldn't run end reduce in distributed");
+//        // TODO - have two variants of OMPLevel for that
+//        throw std::runtime_error("Shouldn't run end reduce in distributed");
         util::getLogger()->debug("S - __kmpc_end_reduce_nowait {} {} {}", loc, gtid, lck);
         endReduction();
     }

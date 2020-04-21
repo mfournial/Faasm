@@ -2,7 +2,7 @@
 
 #include <boost/filesystem.hpp>
 
-#define BINARY_DIR "/usr/local/code/faasm/cmake-build-debug/bin/"
+#define BINARY_DIR "/usr/local/code/faasm/kcmake-build-debug/bin/"
 
 namespace runner {
     GenericFunctionProfiler::GenericFunctionProfiler(std::string userIn, std::string funcName):

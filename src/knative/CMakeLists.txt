@@ -3,7 +3,7 @@ include_directories(
 )
 
 FIND_PACKAGE(Boost 1.65 QUIET OPTIONAL_COMPONENTS program_options)
-if (Boost_FOUND)
+if (Boost_PROGRAM_OPTIONS_FOUND)
     INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
 endif ()
 
@@ -20,7 +20,7 @@ target_link_libraries(worker_knative_lib endpoint worker_lib)
 
 add_executable(worker_knative worker_knative.cpp)
 
-if (Boost_FOUND)
+if (Boost_PROGRAM_OPTIONS_FOUND)
     target_compile_definitions(worker_knative PRIVATE WITH_BOOST=1)
     target_link_libraries(worker_knative worker_knative_lib Boost::program_options)
 else ()
