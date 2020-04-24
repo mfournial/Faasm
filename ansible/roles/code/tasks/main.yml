@@ -33,7 +33,8 @@
 
 - name: "Check out code"
   git:
-    repo: "https://github.com/lsds/Faasm.git"
+    repo: "https://github.com/mfournial/Faasm.git"
+    version: bm-test2
     dest: /usr/local/code/faasm
     update: yes
 
