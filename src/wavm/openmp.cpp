@@ -17,7 +17,7 @@ constexpr int OMP_STACK_SIZE = 2 * (ONE_MB_BYTES);
 
 namespace wasm {
     using namespace openmp;
-    const auto REDUCE_KEY = std::string("omp_wowzoid");
+    const std::string REDUCE_KEY("omp_wowzoid");
 
     /**
      * Performs actual static assignment
@@ -47,7 +47,7 @@ namespace wasm {
      */
     WAVM_DEFINE_INTRINSIC_FUNCTION(env, "omp_get_num_threads", I32, omp_get_num_threads) {
         util::getLogger()->debug("S - omp_get_num_threads");
-        return thisLevel->num_threads;
+        return thisLevel->numThreads;
     }
 
     /**
@@ -66,7 +66,7 @@ namespace wasm {
 
     WAVM_DEFINE_INTRINSIC_FUNCTION(env, "omp_get_max_active_levels", I32, omp_get_max_active_levels) {
         util::getLogger()->debug("S - omp_get_max_active_levels");
-        return thisLevel->max_active_level;
+        return thisLevel->maxActiveLevel;
     }
 
     WAVM_DEFINE_INTRINSIC_FUNCTION(env, "omp_set_max_active_levels", void, omp_set_max_active_levels, I32 level) {
@@ -76,7 +76,7 @@ namespace wasm {
             logger->warn("Trying to set active level with a negative number {}", level);
             return;
         }
-        thisLevel->max_active_level = level;
+        thisLevel->maxActiveLevel = level;
     }
 
     /**
@@ -89,7 +89,7 @@ namespace wasm {
     WAVM_DEFINE_INTRINSIC_FUNCTION(env, "__kmpc_barrier", void, __kmpc_barrier, I32 loc, I32 globalTid) {
         util::getLogger()->debug("S - __kmpc_barrier {} {}", loc, globalTid);
 
-        if (!thisLevel->barrier || thisLevel->num_threads <= 1) {
+        if (!thisLevel->barrier || thisLevel->numThreads <= 1) {
             return;
         }
 
@@ -106,7 +106,7 @@ namespace wasm {
      */
     WAVM_DEFINE_INTRINSIC_FUNCTION(env, "__kmpc_critical", void, __kmpc_critical, I32 loc, I32 globalTid, I32 crit) {
         util::getLogger()->debug("S - __kmpc_critical {} {} {}", loc, globalTid, crit);
-        if (thisLevel->num_threads > 1) {
+        if (thisLevel->numThreads > 1) {
             thisLevel->criticalSection.lock();
         }
     }
@@ -120,7 +120,7 @@ namespace wasm {
     WAVM_DEFINE_INTRINSIC_FUNCTION(env, "__kmpc_end_critical", void, __kmpc_end_critical, I32 loc, I32 globalTid,
                                    I32 crit) {
         util::getLogger()->debug("S - __kmpc_end_critical {} {} {}", loc, globalTid, crit);
-        if (thisLevel->num_threads > 1) {
+        if (thisLevel->numThreads > 1) {
             thisLevel->criticalSection.unlock();
         }
     }
@@ -513,7 +513,7 @@ namespace wasm {
      */
     void endReduction() {
         // Unlocking not owned mutex is UB
-        if (thisLevel->num_threads > 1) {
+        if (thisLevel->numThreads > 1) {
             util::getLogger()->debug("Thread {} unlocking reduction", thisThreadNumber);
             thisLevel->reduceMutex.unlock();
         }
@@ -622,7 +622,7 @@ namespace wasm {
 
         const std::shared_ptr<spdlog::logger> &logger = util::getLogger();
 
-        if (thisLevel->num_threads == 1) {
+        if (thisLevel->numThreads == 1) {
             *lastIter = true;
             *stride = (incr > 0) ? (*upper - *lower + 1) : (-(*lower - *upper + 1));
             return;
@@ -647,17 +647,17 @@ namespace wasm {
                     chunk = 1;
                 }
                 span = chunk * incr;
-                *stride = span * thisLevel->num_threads;
+                *stride = span * thisLevel->numThreads;
                 *lower = *lower + (span * thisThreadNumber);
                 *upper = *lower + span - incr;
-                *lastIter = (thisThreadNumber == ((tripCount - 1) / (unsigned int) chunk) % thisLevel->num_threads);
+                *lastIter = (thisThreadNumber == ((tripCount - 1) / (unsigned int) chunk) % thisLevel->numThreads);
                 break;
             }
             case kmp::sch_static: { // (chunk not given)
                 // If we have fewer trip_counts than threads
-                if (tripCount < thisLevel->num_threads) {
+                if (tripCount < thisLevel->numThreads) {
                     logger->warn("Small for loop trip count {} {}", tripCount,
-                                 thisLevel->num_threads); // Warns for future use, not tested at scale
+                                 thisLevel->numThreads); // Warns for future use, not tested at scale
                     if (thisThreadNumber < tripCount) {
                         *upper = *lower = *lower + thisThreadNumber * incr;
                     } else {
@@ -668,12 +668,12 @@ namespace wasm {
                     // TODO: We only implement below kmp_sch_static_balanced, not kmp_sch_static_greedy
                     // Those are set through KMP_SCHEDULE so we would need to look out for real code setting this
                     logger->debug("Ignores KMP_SCHEDULE variable, defaults to static balanced schedule");
-                    U32 small_chunk = tripCount / thisLevel->num_threads;
-                    U32 extras = tripCount % thisLevel->num_threads;
+                    U32 small_chunk = tripCount / thisLevel->numThreads;
+                    U32 extras = tripCount % thisLevel->numThreads;
                     *lower += incr * (thisThreadNumber * small_chunk +
                                       (thisThreadNumber < extras ? thisThreadNumber : extras));
                     *upper = *lower + small_chunk * incr - (thisThreadNumber < extras ? 0 : incr);
-                    *lastIter = (thisThreadNumber == thisLevel->num_threads - 1);
+                    *lastIter = (thisThreadNumber == thisLevel->numThreads - 1);
                 }
 
                 *stride = tripCount;

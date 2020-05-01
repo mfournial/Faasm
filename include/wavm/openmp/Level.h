@@ -21,9 +21,10 @@ namespace wasm {
         class Level {
         public:
             const int depth = 0; // Number of nested OpenMP constructs, 0 for serial code
-            const int effective_depth = 0; // Number of parallel regions (> 1 thread) above this level
-            int max_active_level = 1; // Max number of effective parallel regions allowed from the top
-            const int num_threads = 1; // Number of threads of this level
+            const int effectiveDepth = 0; // Number of parallel regions (> 1 thread) above this level
+            int maxActiveLevel = 1; // Max number of effective parallel regions allowed from the top
+            const int numThreads = 1; // Number of threads of this level
+            const std::string name = "local"; // TODO - make name unique across functions
             std::unique_ptr<util::Barrier> barrier = {}; // Only needed if num_threads > 1
             std::mutex reduceMutex; // Mutex used for reduction data. Although technically wrong behaviour, make sense for us
             // TODO - This implementation limits to one lock for all critical sections at a level.
@@ -37,7 +38,7 @@ namespace wasm {
             Level(const std::shared_ptr<Level> &parent, int num_threads);
 
             // Distributed constructor
-            Level(int depth, int effective_depth, int max_active_level, int num_threads);
+            Level(int depth, int effectiveDepth, int maxActiveLevel, int numThreads);
 
             // Distribued message construction. Calling the distributed constructor with the message
             // arguments set in this function should be equivalent to calling the local constructor
