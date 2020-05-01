@@ -242,7 +242,6 @@ namespace wasm {
             chainedThreads.reserve(nextNumThreads);
 
             redis.setLong(REDUCE_KEY, 0);
-
             // TODO - Implement redo
             if (activeSnapshotKey.empty()) {
                 int callId = getExecutingCall()->id();
@@ -385,6 +384,26 @@ namespace wasm {
         const long distributedIterationTime = util::getTimeDiffMicros(iterationTp);
         redis.rpushLong("multi_pi_times", distributedIterationTime);
 
+    }
+
+    WAVM_DEFINE_INTRINSIC_FUNCTION(env, "__faasmp_incryby", I64, __faasmp_incrby, I32 keyPtr, I64 value) {
+        const std::shared_ptr<spdlog::logger> &logger = util::getLogger();
+        logger->debug("S - __faasmp_incryby {} {}", keyPtr, value);
+
+        Runtime::Memory *memoryPtr = getExecutingModule()->defaultMemory;
+        std::string key {&Runtime::memoryRef<char>(memoryPtr, (Uptr) keyPtr)};
+        redis::Redis &redis = redis::Redis::getState();
+        return redis.incrByLong(key, value);
+    }
+
+    WAVM_DEFINE_INTRINSIC_FUNCTION(env, "__faasmp_getLong", I64, __faasmp_getLong, I32 keyPtr) {
+        const std::shared_ptr<spdlog::logger> &logger = util::getLogger();
+        logger->debug("S - __faasmp_getLong {}", keyPtr);
+
+        Runtime::Memory *memoryPtr = getExecutingModule()->defaultMemory;
+        std::string key {&Runtime::memoryRef<char>(memoryPtr, (Uptr) keyPtr)};
+        redis::Redis &redis = redis::Redis::getState();
+        return redis.getLong(key);
     }
 
     /**

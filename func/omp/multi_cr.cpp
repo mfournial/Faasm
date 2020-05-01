@@ -1,7 +1,7 @@
 #include <omp.h>
 #include <cstdio>
 #include <random>
-#include <faasmp/faasmp.h>
+#include "faasmp/reduction.h"
 
 unsigned long thread_seed() {
     int threadNum = omp_get_thread_num();
@@ -9,21 +9,21 @@ unsigned long thread_seed() {
 }
 
 int main(int argc, char **argv) {
-//    long num_devices = 0;
-//    if (argc == 4) {
-//        num_threads = std::stol(argv[1]);
-//        iterations = std::stoll(argv[2]);
-//        num_devices = std::stol(argv[3]);
-//    } else if (argc != 1) {
-//        printf("Usage: mt_pi [num_threads num_iterations num_devices]");
-//        return 5;
-//    }
-//
-//    omp_set_default_device(num_devices);
-//
     long long iterations = 1000LL;
-    long num_threads = 4;
-    i64 result(1);
+    long num_threads = 1;
+    long num_devices = 0;
+    if (argc == 4) {
+        num_threads = std::stol(argv[1]);
+        iterations = std::stoll(argv[2]);
+        num_devices = std::stol(argv[3]);
+    } else if (argc != 1) {
+        printf("Usage: mt_pi [num_threads num_iterations num_devices]");
+        return 5;
+    }
+
+    omp_set_default_device(num_devices);
+
+    i64 result(0);
     #pragma omp parallel num_threads(num_threads) default(none) firstprivate(iterations) reduction(+:result)
     {
         std::uniform_real_distribution<double> unif(0, 1);
