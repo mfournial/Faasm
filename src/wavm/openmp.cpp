@@ -236,7 +236,6 @@ namespace wasm {
         pushedNumThreads = -1; // Resets for next push
 
         if (0 > userDefaultDevice) {
-            int *reducePtr = nullptr;
 
             std::vector<int> chainedThreads;
             chainedThreads.reserve(nextNumThreads);
@@ -255,9 +254,6 @@ namespace wasm {
             const std::string origStr = util::funcToString(*originalCall, false);
 
             U32 *nativeArgs = Runtime::memoryArrayPtr<U32>(memoryPtr, argsPtr, argc);
-            if (argc > 0) {
-                reducePtr = &Runtime::memoryRef<I32>(memoryPtr, argsPtr);
-            }
 
             // Create the threads (messages) themselves
             for (int threadNum = 0; threadNum < nextNumThreads; threadNum++) {
@@ -316,8 +312,7 @@ namespace wasm {
                 throw std::runtime_error(fmt::format("{} OMP threads have exited with errors", numErrors));
             }
 
-            *reducePtr = redis.getLong(REDUCE_KEY);
-            logger->error("END DISTRIBUTED FORK. SETTING REDUCE VALUE TO {}", *reducePtr);
+            logger->debug("Distributed Fork finished successfully");
         } else { // Single host
 
             // Set up new level

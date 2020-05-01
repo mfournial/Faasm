@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-//#ifdef __wasm__
+#ifdef __wasm__
 
 #include <cstdio>
 #include <string>
@@ -16,7 +16,7 @@ class FaasmCounter {
 private:
     union State {
         T x;
-        uint8_t buf; // Ideally uint8_t[sizeof(t)] but this type doesn't match uint8_t*
+        uint8_t buf; // Ideally uint8_t[sizeof(T)] but this type doesn't match uint8_t* in the state API
     };
 
     static union State readState(const char *key) {
@@ -70,8 +70,6 @@ private:
     std::string reductionKey;
 
     explicit i64() = default;
-
-    static int64_t readState(const std::string &key);
 
 public:
 
@@ -129,9 +127,6 @@ public:
 };
 
 
-//#endif
-
-#ifdef __wasm__
 #pragma omp declare reduction \
 (+: i64: omp_in.redisSum(omp_out)) \
 initializer(omp_priv=i64::threadNew())
