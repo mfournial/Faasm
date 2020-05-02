@@ -9,9 +9,9 @@ unsigned long thread_seed() {
 }
 
 int main(int argc, char **argv) {
-    long long iterations = 1000LL;
+    long long iterations = 1001LL;
     long num_threads = 1;
-    long num_devices = 0;
+    long num_devices = -1;
     if (argc == 4) {
         num_threads = std::stol(argv[1]);
         iterations = std::stoll(argv[2]);
@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
 
     omp_set_default_device(num_devices);
 
-    i64 result(0);
+    i64 result(90);
     #pragma omp parallel num_threads(num_threads) default(none) firstprivate(iterations) reduction(+:result)
     {
         std::uniform_real_distribution<double> unif(0, 1);
@@ -39,6 +39,8 @@ int main(int argc, char **argv) {
             }
         }
     }
+    printf("not nssaa no tes itsealf??ai %ld\n", (int64_t) result);
+
 
     double pi = (4.0 * (double) result) / iterations;
 

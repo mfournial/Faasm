@@ -645,10 +645,20 @@ namespace wasm {
             logger->debug("Running OMP thread #{} for function{} with argType {} (argc = {})", threadNum, funcPtr,
                           WAVM::IR::asString(funcType), argc);
 
+//            invokeArgs.emplace_back(100);
+//            invokeArgs.emplace_back(200);
+//            invokeArgs.emplace_back(400);
+//            invokeArgs.emplace_back(500);
             invokeArgs.emplace_back(threadNum);
             invokeArgs.emplace_back(argc);
-            for (int argIdx = 0; argIdx < argc; argIdx++) {
+//            for (int argIdx = 0; argIdx < argc; argIdx++) {
+            for (int argIdx = argc - 1; argIdx >=  0; argIdx--) {
                 invokeArgs.emplace_back(msg.ompfunctionargs(argIdx));
+            }
+            // Those could be all nullptr and yet have NO effect
+//            std::reverse(invokeArgs.begin(), invokeArgs.end());
+            for (auto & invokeArg : invokeArgs) {
+                logger->error("invokeArgs {}", invokeArg.i32);
             }
 
         } else if (funcPtr > 0) {

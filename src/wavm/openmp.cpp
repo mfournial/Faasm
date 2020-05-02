@@ -11,13 +11,14 @@
 #include <state/StateKeyValue.h>
 #include <scheduler/Scheduler.h>
 
+#include "/usr/local/faasm/llvm-sysroot/include/faasmp/reduction.h"
+
 #include <util/timing.h>
 
 constexpr int OMP_STACK_SIZE = 2 * (ONE_MB_BYTES);
 
 namespace wasm {
     using namespace openmp;
-    const std::string REDUCE_KEY("omp_wowzoid");
 
     /**
      * Performs actual static assignment
@@ -240,7 +241,6 @@ namespace wasm {
             std::vector<int> chainedThreads;
             chainedThreads.reserve(nextNumThreads);
 
-            redis.setLong(REDUCE_KEY, 0);
             // TODO - Implement redo
             if (activeSnapshotKey.empty()) {
                 int callId = getExecutingCall()->id();
@@ -254,12 +254,19 @@ namespace wasm {
             const std::string origStr = util::funcToString(*originalCall, false);
 
             U32 *nativeArgs = Runtime::memoryArrayPtr<U32>(memoryPtr, argsPtr, argc);
+//            U32 *level1 = &Runtime::memoryRef<U32>(memoryPtr, nativeArgs[0]);
+
+            int pos = 1;
+            auto test = &Runtime::memoryRef<i64>(memoryPtr, nativeArgs[pos]);
+            logger->error("GIVEN at {} ({}): {}",pos, nativeArgs[pos], test->x);
 
             // Create the threads (messages) themselves
             for (int threadNum = 0; threadNum < nextNumThreads; threadNum++) {
                 message::Message call = util::messageFactory(originalCall->user(), originalCall->function());
                 call.set_isasync(true);
-                for (int argIdx = 0; argIdx < argc; argIdx++) {
+                for (int argIdx = argc - 1; argIdx >=  0; argIdx--) {
+//                for (int argIdx = 0; argIdx < argc; argIdx++) {
+                    logger->error("nativeArgs {}",nativeArgs[argIdx]);
                     call.add_ompfunctionargs(nativeArgs[argIdx]);
                 }
 
@@ -378,7 +385,6 @@ namespace wasm {
 
         const long distributedIterationTime = util::getTimeDiffMicros(iterationTp);
         redis.rpushLong("multi_pi_times", distributedIterationTime);
-
     }
 
     WAVM_DEFINE_INTRINSIC_FUNCTION(env, "__faasmp_incryby", I64, __faasmp_incrby, I32 keyPtr, I64 value) {
@@ -505,18 +511,18 @@ namespace wasm {
                 throw std::runtime_error("Unsupported reduce operation");
                 break;
             case ReduceTypes::multiHostSum:
-                retVal = 4; // Skips compiler generated end_reduce statements;
-                Runtime::Memory *memoryPtr = getExecutingModule()->defaultMemory;
-                int *localReduceData = &Runtime::memoryRef<I32>(memoryPtr,
-                                                                Runtime::memoryRef<I32>(memoryPtr, reduce_data));
-                logger->debug("Reduce local data ({}): {}", thisThreadNumber, *localReduceData);
+                retVal = thisThreadNumber == 0 ? 1 : 0; // Skips compiler generated end_reduce statements;
+//                Runtime::Memory *memoryPtr = getExecutingModule()->defaultMemory;
+//                I64 *localReduceData = &Runtime::memoryRef<I64>(memoryPtr,
+//                                                                Runtime::memoryRef<I64>(memoryPtr, reduce_data));
+//                logger->error("Reduce local data ({}): {}", thisThreadNumber, *localReduceData);
 
-                if (util::getSystemConfig().stateMode == "redis") {
-                    redis::Redis &redis = redis::Redis::getState();
-                    redis.incrByLong(REDUCE_KEY, *localReduceData);
-                } else {
-                    throw std::runtime_error("Only supports Redis for state");
-                }
+                //if (util::getSystemConfig().stateMode == "redis") {
+                //    redis::Redis &redis = redis::Redis::getState();
+                //    redis.incrByLong(REDUCE_KEY, *localReduceData);
+                //} else {
+                //    throw std::runtime_error("Only supports Redis for state");
+                //}
                 break;
         }
         return retVal;
@@ -583,7 +589,7 @@ namespace wasm {
         if (0 <= userDefaultDevice) {
             endReduction();
         } else {
-            throw std::runtime_error("End reduce called in distributed context");
+//            throw std::runtime_error("End reduce called in distributed context");
         }
     }
 
@@ -599,7 +605,7 @@ namespace wasm {
         if (0 <= userDefaultDevice) {
             endReduction();
         } else {
-            throw std::runtime_error("End reduce called in distributed context");
+//            throw std::runtime_error("End reduce called in distributed context");
         }
     }
 

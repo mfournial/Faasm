@@ -3,9 +3,10 @@
 
 #include <cstdint>
 
-#ifdef __wasm__
+//#ifdef __wasm__
 
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <random>
 #include "faasm/core.h"
@@ -59,7 +60,8 @@ public:
 
 class i64 {
 
-private:
+//private:
+public:
     int64_t x = 0;
     // Depending on the number of threads and the reduction, a copy constructor with the initial reductor
     // is created on some paths (i.e. for certain threads). A better implementation would deal with references
@@ -67,11 +69,24 @@ private:
     // We would also like to support coercion from all arithmetic operators by having a logical default constructor
     // which we need to have no overhead compared to a raw arithmetic type
     // For now we keep this shorter than small string optimisations, could do cache line optimisation too.
-    std::string reductionKey;
+//    std::string reductionKey;
+    char reductionKey[12];
 
-    explicit i64() = default;
+    explicit i64() : x (100) {
+
+//        printf("NOTHING INIT curio %d\n", sizeof(State));
+    } ;
 
 public:
+
+    i64(const i64 &other) {
+        printf("Address us %p, other %p\n", this, &other);
+        printf("COPY TOPR key: %p\n", other.reductionKey);
+        x = 40;
+//        reductionKey = other.reductionKey;
+        std::strncpy(reductionKey, other.reductionKey, 12);
+
+    }
 
     // Should be called on reduction init only and not in user code. This would be enforced by compiler.
     // For now we make the single argument constructor private.
@@ -80,13 +95,20 @@ public:
     }
 
     // Used by user on initialisation
-    explicit i64(int64_t x) : x(x), reductionKey(faasm::randomString(12)) {
-
-        FaasmCounter<int64_t>::init(reductionKey.c_str(), x);
+    explicit i64(int64_t x) : x(x), reductionKey() {
+//        faasm::randomString(11).c_str()
+        std::strncpy(reductionKey, "test11", sizeof(reductionKey));
+        printf("Initial KEY: %s \n", reductionKey);
+        FaasmCounter<int64_t>::init(reductionKey, x);
     }
 
-    void redisSum(i64 &out) {
-        FaasmCounter<int64_t>::incrby(out.reductionKey.c_str(), x);
+    void redisSum(i64 out) {
+        printf("my X: %ld\n", x);
+//        printf("my KEY: %s \n", reductionKey);
+        printf("out X: %ld\n", out.x);
+        printf("out KEY: %s \n", out.reductionKey);
+        FaasmCounter<int64_t>::incrby(out.reductionKey, x);
+        printf("Done: \n") ;
     }
 
     /*
@@ -118,23 +140,27 @@ public:
     }
 
     operator double() const {
-        return (double) FaasmCounter<int64_t>::getCounter(reductionKey.c_str());
+        return (double) FaasmCounter<int64_t>::getCounter(reductionKey);
     }
 
     operator int64_t() const {
-        return FaasmCounter<int64_t>::getCounter(reductionKey.c_str());
+        printf("TODO - Get counter");
+        return x;
+//        return FaasmCounter<int64_t>::getCounter(reductionKey.c_str());
     }
 };
 
 
+#if _OPENMP
 #pragma omp declare reduction \
 (+: i64: omp_in.redisSum(omp_out)) \
 initializer(omp_priv=i64::threadNew())
+#endif
 
-#else // i.e not __wasm__
+//#else // i.e not __wasm__
 
-using i64 = int64_t;
+//using i64 = int64_t;
 
-#endif // __wasm__
+//#endif // __wasm__
 
 #endif //FAASM_REDUCTION_H
