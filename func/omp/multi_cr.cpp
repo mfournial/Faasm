@@ -9,7 +9,7 @@ unsigned long thread_seed() {
 }
 
 int main(int argc, char **argv) {
-    long long iterations = 1000LL;
+    long iterations = 1000LL;
     long num_threads = 1;
     long num_devices = 0;
     if (argc == 4) {
@@ -43,6 +43,6 @@ int main(int argc, char **argv) {
     double pi = (4.0 * (double) result) / iterations;
 
     if (abs(pi - 3.14) > 0.01) {
-        printf("Low accuracy. Expected pi got %f\n", pi);
+        printf("Low accuracy Expected pi got %f\n", pi);
     }
 }

@@ -6,6 +6,7 @@
 #ifdef __wasm__
 
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <random>
 #include "faasm/core.h"
@@ -44,8 +45,7 @@ public:
         faasmLockStateGlobal(counterKey);
 
         union State val = readState(counterKey);
-        val.x +=
-                increment;
+        val.x += increment;
         writeState(counterKey, val
         );
 
@@ -73,6 +73,9 @@ private:
 
 public:
 
+    // Ensures no silly copy is made
+    i64(const i64 &other) = delete;
+
     // Should be called on reduction init only and not in user code. This would be enforced by compiler.
     // For now we make the single argument constructor private.
     static i64 threadNew() {
@@ -80,13 +83,12 @@ public:
     }
 
     // Used by user on initialisation
-    explicit i64(int64_t x) : x(x), reductionKey(faasm::randomString(12)) {
-
+    explicit i64(int64_t x) : x(x), reductionKey(faasm::randomString(11)) {
         FaasmCounter<int64_t>::init(reductionKey.c_str(), x);
     }
 
-    void redisSum(i64 &out) {
-        FaasmCounter<int64_t>::incrby(out.reductionKey.c_str(), x);
+    void redisSum(i64 &threadResult) {
+        FaasmCounter<int64_t>::incrby(reductionKey.c_str(), threadResult.x);
     }
 
     /*
@@ -128,7 +130,7 @@ public:
 
 
 #pragma omp declare reduction \
-(+: i64: omp_in.redisSum(omp_out)) \
+(+: i64: omp_out.redisSum(omp_in)) \
 initializer(omp_priv=i64::threadNew())
 
 #else // i.e not __wasm__
