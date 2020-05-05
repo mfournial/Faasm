@@ -42,14 +42,13 @@ public:
     }
 
     static int incrby(const char *counterKey, T increment) {
-        faasmLockStateGlobal(counterKey);
+        faasmLockStateWrite(counterKey);
 
         union State val = readState(counterKey);
         val.x += increment;
-        writeState(counterKey, val
-        );
+        writeState(counterKey, val);
 
-        faasmUnlockStateGlobal(counterKey);
+        faasmUnlockStateWrite(counterKey);
 
         return val.x;
     }

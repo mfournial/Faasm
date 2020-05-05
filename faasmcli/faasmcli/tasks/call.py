@@ -4,6 +4,7 @@ from faasmcli.util.call import invoke_impl, status_call_impl, flush_call_impl
 from faasmcli.util.endpoints import get_invoke_host_port
 
 import redis
+import time
 
 @task(default=True)
 def invoke(ctx, user, func,
@@ -51,7 +52,7 @@ def multi_cr(ctx, number_times=6):
             for num_threads in threads:
                 for _ in range(backoff(num_threads)):
                     cmd = f"{num_threads} {iter_size} {mode}"
-                    print(f"running omp/multi_cr-- {cmd}")
+                    print(f"running omp/multi_cr -- {cmd}")
                     invoke_impl("omp", "multi_cr", knative=True, cmdline=cmd)
                     # allow for async flag in invoke too
                     while r.llen(times_key) == num_times:
