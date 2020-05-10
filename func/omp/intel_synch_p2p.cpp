@@ -105,8 +105,8 @@ FAASM_MAIN_FUNC() {
     printf("Parallel Research Kernels version %s\n", PRKVERSION);
     printf("OpenMP pipeline execution on 2D grid\n");
 
-    nthread_input = 4;
-    iterations  = 100;
+    nthread_input = 20;
+    iterations  = 1000;
     m  = 10000;
     n  = 1000;
 

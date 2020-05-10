@@ -15,3 +15,6 @@ target_link_libraries(simple_runner ${RUNNER_LIBS})
 
 add_executable(func_sym func_sym.cpp)
 target_link_libraries(func_sym ${RUNNER_LIBS})
+
+add_executable(bench_omp bench_omp.cpp)
+target_link_libraries(bench_omp ${RUNNER_LIBS})

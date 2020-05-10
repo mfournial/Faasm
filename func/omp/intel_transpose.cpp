@@ -101,7 +101,7 @@ FAASM_MAIN_FUNC() {
     printf("Parallel Research Kernels version %s\n", PRKVERSION);
     printf("OpenMP Matrix transpose: B = A^T\n");
 
-    nthread_input = 4;
+    nthread_input = 20;
     iterations    = 300;
     order         = 2000;
     /* Faasm - Hardcode the default
