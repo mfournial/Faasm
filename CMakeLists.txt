@@ -31,7 +31,7 @@ if (FAASM_WAMR_SUPPORT)
     set(WAMR_BUILD_AOT 0)
     set(WAMR_BUILD_LIBC_WASI 1)
     set(WAMR_BUILD_LIBC_BUILTIN 0)
-endif()
+endif ()
 
 # Library type (for shared libraries)
 if (FAASM_STATIC_LIBS)
@@ -51,6 +51,12 @@ else ()
     endfunction()
 endif ()
 
+option(FAASM_OMP_PTS "PREALLOCATE THREAD STACK: Only available for local WasmMP and non recursive levels")
+if (${FAASM_OMP_PTS})
+    message("-- Activated OMP_PTS: OpenMP Thread stack preallocation feature")
+    add_compile_definitions(OMP_PTS)
+endif ()
+
 # Switch on WAVM stack traces in debug (potential performance gain?)
 set(WAVM_ENABLE_UNWIND ON CACHE BOOL "WAVM unwind")
 #if(CMAKE_BUILD_TYPE MATCHES Debug)
@@ -64,11 +70,14 @@ add_definitions(-DDLL_EXPORT=)
 add_definitions(-DDLL_IMPORT=)
 
 # Faasm profiling
-add_definitions(-DFAASM_PROFILE_ON=0)
+option(FAASM_PERF_PROFILING "Turn on profiling features as described in debugging.md")
+option(FAASM_SELF_PROFILING "Turn on system profiling logged at tracing level")
 
-# Custom LLVM build (also for profiling)
-set(FAASM_CUSTOM_LLVM 0)
-if (${FAASM_CUSTOM_LLVM})
+if (${FAASM_SELF_PROFILING})
+    add_compile_definitions(PROFILE_ALL)
+endif ()
+
+if (${FAASM_PERF_PROFILING})
     # In accordance with bin/build_llvm_perf.sh and LLVM version for WAVM
     set(LLVM_DIR /usr/local/code/llvm-perf/build/lib/cmake/llvm)
     message(STATUS "Using custom LLVM at ${LLVM_DIR} for profiling")
@@ -143,10 +152,10 @@ else ()
     # WAVM
     add_subdirectory(third-party/WAVM)
 
-    if(FAASM_WAMR_SUPPORT)
-    include (${WAMR_ROOT_DIR}/build-scripts/runtime_lib.cmake)
-    add_library(libwamr ${WAMR_RUNTIME_LIB_SOURCE})
-    endif()
+    if (FAASM_WAMR_SUPPORT)
+        include(${WAMR_ROOT_DIR}/build-scripts/runtime_lib.cmake)
+        add_library(libwamr ${WAMR_RUNTIME_LIB_SOURCE})
+    endif ()
 
     # Faasm functions
     add_subdirectory(func)
