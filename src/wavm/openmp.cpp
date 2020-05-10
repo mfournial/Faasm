@@ -333,14 +333,11 @@ namespace wasm {
 
             // Note - must ensure thread arguments are outside loop scope otherwise they do
             // may not exist by the time the thread actually consumes them
-//            std::vector<LocalThreadArgs> threadArgs;
-//            threadArgs.reserve(nextNumThreads);
-
             std::vector<std::vector<IR::UntaggedValue>> microtaskArgs;
             microtaskArgs.reserve(nextNumThreads);
 
-            std::vector<std::future<I64>> threadsFutures;
-            threadsFutures.reserve(nextNumThreads);
+            std::vector<LocalThreadArgs> threadArgs;
+            threadArgs.reserve(nextNumThreads);
 
             // Build up arguments
             for (int threadNum = 0; threadNum < nextNumThreads; threadNum++) {
@@ -357,26 +354,30 @@ namespace wasm {
 
                 // Arguments for spawning the thread
                 // NOTE - CLion auto-format insists on this layout... and clangd really hates C99 extensions
-                LocalThreadArgs threadArgs = {
-                        .tid = threadNum,
-                        .level = nextLevel,
-                        .parentModule = parentModule,
-                        .parentCall = parentCall,
-                        .spec = {
-                                .contextRuntimeData = contextRuntimeData,
-                                .func = func,
-                                .funcArgs = microtaskArgs[threadNum].data(),
-                        }
-                };
+                threadArgs.push_back({
+                                             .tid = threadNum,
+                                             .level = nextLevel,
+                                             .parentModule = parentModule,
+                                             .parentCall = parentCall,
+                                             .spec = {
+                                                     .contextRuntimeData = contextRuntimeData,
+                                                     .func = func,
+                                                     .funcArgs = microtaskArgs[threadNum].data(),
+                                             }
+                                     });
 
-                threadsFutures.emplace_back(parentModule->getPool()->runThread(std::move(threadArgs)));
             }
+
+            // TODO - refector so we don't get the pool but submit the job to the module directly
+            std::vector<std::future<I64>> threadsFutures = parentModule->getPool().run(std::move(threadArgs));
 
             // Await all threads
             I64 numErrors = 0;
             for (auto &f : threadsFutures) {
                 numErrors += f.get();
             }
+
+            parentModule->getPool().clearPromises();
 
             if (numErrors) {
                 throw std::runtime_error(fmt::format("{} OMP threads have exited with errors", numErrors));

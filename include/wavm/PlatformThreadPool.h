@@ -17,6 +17,7 @@
 namespace wasm {
 
     using namespace WAVM;
+
     class WAVMWasmModule;
 
     namespace openmp {
@@ -29,22 +30,27 @@ namespace wasm {
 
         friend I64 workerEntryFunc(void* _args);
 
-        std::future<I64> runThread(openmp::LocalThreadArgs &&threadArgs);
+        std::vector<std::future<I64>> run(std::vector<openmp::LocalThreadArgs> &&threadArgs);
+
+        void clearPromises();
 
         ~PlatformThreadPool();
 
     private:
-        std::queue<std::pair<std::promise<I64>, openmp::LocalThreadArgs>> tasks;
-        std::vector<WAVM::Platform::Thread *> workers;
-
-        std::mutex mutexQueue;
+        std::vector<openmp::LocalThreadArgs> workerArgs;
+        std::vector<std::promise<I64>> promises;
+        std::mutex mutex;
         std::condition_variable condition;
+        std::uint32_t runNumber = 0;
+        std::vector<WAVM::Platform::Thread *> workers;
         bool stop = false;
+
     };
 
     struct WorkerArgs {
         U32 stackTop;
         PlatformThreadPool *pool;
+        size_t workerIdx;
     };
 
 }

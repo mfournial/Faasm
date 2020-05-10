@@ -1289,8 +1289,8 @@ namespace wasm {
         openmp::setTLS(msg.ompthreadnum(), ompLevel);
     }
 
-    std::unique_ptr<PlatformThreadPool> &WAVMWasmModule::getPool() {
-        return ompPool;
+    PlatformThreadPool &WAVMWasmModule::getPool() {
+        return *ompPool;
     }
 
 }

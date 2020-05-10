@@ -116,7 +116,7 @@ namespace wasm {
 
         U32 allocateThreadStack();
 
-        std::unique_ptr<PlatformThreadPool> &getPool();
+        PlatformThreadPool &getPool();
 
     protected:
         void doSnapshot(std::ostream &outStream) override;
