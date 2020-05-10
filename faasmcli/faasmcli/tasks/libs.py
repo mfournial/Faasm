@@ -70,10 +70,11 @@ def _build_faasm_lib(dir_name, clean, verbose):
 
     clean_dir(build_dir, clean)
 
-    verbose_str = "VERBOSE=1" if verbose else ""
+    verbose_str = "-s" if verbose else ""
     build_cmd = [
         verbose_str,
         "cmake",
+        "-G Ninja"
         "-DFAASM_BUILD_TYPE=wasm",
         "-DCMAKE_BUILD_TYPE=Release",
         "-DCMAKE_TOOLCHAIN_FILE={}".format(FAASM_TOOLCHAIN_FILE),
@@ -87,14 +88,9 @@ def _build_faasm_lib(dir_name, clean, verbose):
     if res != 0:
         exit(1)
 
-    res = call("{} make".format(verbose_str), shell=True, cwd=build_dir)
+    res = call("ninja {} install".format(verbose_str), shell=True, cwd=build_dir)
     if res != 0:
         exit(1)
-
-    res = call("make install", shell=True, cwd=build_dir)
-    if res != 0:
-        exit(1)
-
 
 @task
 def faasm(ctx, clean=False, lib=None, verbose=False):
@@ -133,6 +129,30 @@ def rust(ctx, clean=False, verbose=False):
     Install Rust library
     """
     _build_faasm_lib("rust", clean, verbose)
+
+@task
+def malloc(ctx, clean=False):
+    """
+    Compile and install dlmalloc
+    """
+    work_dir = join(PROJ_ROOT, "third-party", "malloc")
+    build_dir = join(PROJ_ROOT, "build", "malloc")
+
+    clean_dir(build_dir, clean)
+
+    build_cmd = [
+        "cmake",
+        "-G Ninja",
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DCMAKE_TOOLCHAIN_FILE={}".format(FAASM_TOOLCHAIN_FILE),
+        work_dir,
+    ]
+
+    build_cmd_str = " ".join(build_cmd)
+    print(build_cmd_str)
+
+    call(build_cmd_str, shell=True, cwd=build_dir)
+    call("ninja install", shell=True, cwd=build_dir)
 
 
 @task
@@ -181,11 +201,11 @@ def fake(ctx, clean=False):
 
 
 @task
-def lulesh(ctx, mpi=False, omp=False, clean=True, debug=False, cp=True):
+def lulesh(ctx, lulesh_dir, mpi=False, omp=False, clean=True, debug=False, cp=True):
     """
     Compile and install the LULESH code
     """
-    work_dir = join(THIRD_PARTY_DIR, "LULESH")
+    work_dir = lulesh_dir
 
     if omp and mpi:
         build_dir = "ompi"
