@@ -1281,7 +1281,11 @@ namespace wasm {
                                                                 msg.ompmal(),
                                                                 msg.ompnumthreads()));
         } else {
-            ompPool = std::make_unique<PlatformThreadPool>(util::getSystemConfig().maxWorkersPerFunction, this);
+            if (ompPool == nullptr) {
+                auto s = msg.cmdline();
+                auto ff = s.substr(0, s.find(std::string(" ")));
+                ompPool = std::make_unique<PlatformThreadPool>(std::stoi(ff), this);
+            }
             ompLevel = std::static_pointer_cast<openmp::Level>(
                     std::make_shared<openmp::SingleHostLevel>());
         }

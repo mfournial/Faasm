@@ -24,7 +24,7 @@ namespace wasm {
             {
                 UniqueLock lock(pool->mutexQueue);
                 pool->condition.wait(lock, [&pool] { return pool->stop || !pool->tasks.empty(); });
-                if (pool->stop && pool->tasks.empty()) {
+                if (pool->stop) {
                     // We're done folks
                     return 0;
                 }
